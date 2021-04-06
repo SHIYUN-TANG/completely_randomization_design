@@ -1,0 +1,163 @@
+---
+title: "Assignment2"
+author: "SHIYUN TANG - 1004424232"
+date: "2/14/2021"
+output:
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Part I
+
+```{r}
+set.seed(4232) # use student number to set the seed
+
+lambda_S = 1/3 #set lambda
+
+n = 9 #number of observations
+
+expdist_S <- rexp(n, rate = lambda_S) #set the exponential distribution for treatment S
+
+round(expdist_S, 3) #list the observed values
+
+lambda_T = 1
+
+expdist_T <- rexp(n, rate = lambda_T) #set the exponential distribution for treatment T
+
+round(expdist_T, 3) #list the observed values
+
+pair <- data.frame(Treatment_S = c(round(expdist_S, 3)), Treatment_T = c(round(expdist_T, 3)))
+
+print(pair) #display the pairs of observations of treatment S and T
+
+observations <- c(1,2,3,4,5,6,7,8,9)
+
+plot(observations, expdist_S, xlab = "observations", ylab = "life time", main = "Life Time of LED Bulbs Under Treatment S and T", pch=16, cex=1.5)
+points(observations, expdist_T, pch=17, cex=1.5)
+legend("bottomright",legend = c("treatment S","treatment T"), pch = c(16, 17)) #display the pairs of observations of treatment S and T
+```
+
+# Part II
+
+First, we use the completely randomization design. The null hypothesis is that the LED bulbs' mean life time under treatment S is equal to the LED bulbs' mean life time under treatment T and the alternative hypothesis is that the Led bulbs' mean life time under treatment T is less than the Led bulbs' mean life time under treatment S.
+
+This distribution contains $18\choose 9$ which is 48620 values and the probability of the observed treatment is ${1}/{18\choose 9}$ which is ${1}/{48620}$.
+
+```{r}
+treatment <- c(expdist_S,expdist_T) #pool data
+index <- combn(18,9)
+N = ncol(index)
+res <-numeric(N)# store the results
+for(i in 1:N)
+  {res[i] <-mean(treatment[index[,i]])-mean(treatment[-index[,i]])} #Generate N treatment assignments
+
+hist(res,xlab="ybarT-ybarS",  main="Randomization Distribution of difference in means") #histogram of completely randomization design
+observed <- mean(expdist_T) - mean(expdist_S) #store observed mean difference
+abline(v=observed, col="blue") #add line at observed mean diff
+
+pval <- sum(res<=observed)/N# Randomization p value
+round(pval,2)
+```
+
+The p-value for the test is 0.01 and is smaller than the significance level which is smaller than 0.05. Thus, the null hypothesis will be rejected which means the Led bulbs' mean life time under treatment T is less than the Led bulbs' mean life time under treatment S.
+
+Then, we use the randomized paired design. The null hypothesis is that there's no difference between the LED bulbs' mean life time under treatment S and the LED bulbs' mean life time under treatment T and the alternative hypothesis is that the difference between the LED bulbs' mean life time under treatment S and the LED bulbs' mean life time under treatment T is less than 0.
+
+This distribution contains $2^9$ which is 512 values and the probability of the observed treatment is ${1}/{2^9}$ which is ${1}/{512}$.
+
+```{r}
+diff <- expdist_T - expdist_S
+meandiff <- mean(expdist_T) - mean(expdist_S)
+N <- 2^(9)# number of treatment assignments
+res <-numeric(N) #store results
+LR <-list(c(-1,1))# difference is multiplied by -1 or 1
+
+trtassign <-expand.grid(rep(LR, 9))
+for(i in 1:N){
+  res[i] <- mean(as.numeric(trtassign[i,])*diff)}
+
+hist(res, xlab="Mean Difference",main="Randomization Distribution Means of Differences")
+abline(v = meandiff,col="blue")#add line at observed mean diff
+
+pval <- sum(res<=meandiff)/N# p-value
+round(pval,2)
+```
+
+The p-value for the test almost equal to 0 and is smaller than the significance level which is smaller than 0.05. Thus, the null hypothesis will be rejected which means the difference between the LED bulbs' mean life time under treatment S and the LED bulbs' mean life time under treatment T is less than 0.
+
+# Part III
+
+Since the population distributions and parameters are unknown, we don't know if the two samples have equal variances. Thus, we are going to use the Welch two sample t-test. The null hypothesis is that the LED bulbs' mean life time under treatment S is equal to the LED bulbs' mean life time under treatment T and the alternative hypothesis is that the Led bulbs' mean life time under treatment T is less than the Led bulbs' mean life time under treatment S.
+
+```{r}
+t.test(expdist_T,expdist_S,alternative = "less") #Welch Two Sample t-test
+```
+The p-value of the two sample t-test is 0.01 and is smaller than the significance level which is smaller than 0.05. Thus, the null hypothesis will be rejected which means the Led bulbs' mean life time under treatment T is less than the Led bulbs' mean life time under treatment S.
+
+Then, we are going to use the qq-plot to check the normality assumption.
+
+```{r}
+qqnorm(expdist_S, main = "QQ-plot for Treatment S")
+qqline(expdist_S) #QQ-plot for Treatment S
+
+qqnorm(expdist_T, main = "QQ-plot for Treatment T")
+qqline(expdist_T) #QQ-plot for Treatment T
+```
+From the qq-plot for treatment S, we can see it's left tailed and some of the points do not fit the normal distribution well, especially the points on the both ends. From the qq-plot for treatment T, we can see it's right skewed and some of the points do not fit the normal distribution well, especially the points on the right end. Therefore the t-test might not fully follow a normal distribution.
+
+Since the p-value of two sample t-test is closed to the p-value of completely randomization design and both of them are small than the significance level, we can say the results of the t-test agree with the results of the randomization test.
+
+In a paired t-test, the variance is not assumend to be equal so we can use the paired t-test to compare our two sample. The null hypothesis is that the true mean which is the mean of difference is equal to zero and the alternative hypothesis is that the true mean is less than 0 which is the mean of difference is less than 0.
+
+```{r}
+t.test(diff, alternative = "less") #paired t-test
+```
+
+The p-value of the paired t-test is 0.006 and is smaller than the significance level which is smaller than 0.05. Thus, the null hypothesis will be rejected which means the mean of difference is less than 0 and not equal to 0.
+
+Then, we are going to use the qq-plot to check the normality assumption.
+
+```{r}
+qqnorm(diff, main = "QQ-plot for difference")
+qqline(diff) #QQ-plot for difference
+```
+
+From the qq-plot for the difference between treatment S and treatment T, we can see almost all the points fit the normal distribution except the point on the left tail. Therefore the t-test might basically follow a normal distribution.
+
+Since the p-value of paired t-test is closed to the p-value of randomized paired design and both of them are small than the significance level, we can say the results of the t-test agree with the results of the randomization test.
+
+# Part IV
+
+```{r}
+set.seed(4232) # use student number to set the seed
+
+pvals <- replicate(1000, t.test(rexp(20,rate = 1),
+                                rexp(20,rate = 1/3))$p.value) #completely randomized design and t-test
+
+sum(pvals<=0.05)/1000
+
+pvals <- replicate(1000, t.test(rexp(20,rate = 1), 
+                                rexp(20,rate = 1/3), 
+                                paired = TRUE)$p.value) #Randomized paired design and t test
+
+sum(pvals<=0.05)/1000
+
+pvals <- replicate(1000, wilcox.test(rexp(20,rate = 1), 
+                                     rexp(20,rate = 1/3))$p.value) #completely randomized design and Wilconxon test
+
+sum(pvals <= 0.05)/1000
+
+pvals <- replicate(1000, wilcox.test(rexp(20,rate = 1), 
+                                     rexp(20,rate = 1/3),
+                                     paired = TRUE)$p.value) #Randomized paired design and Wilconxon test
+sum(pvals <= 0.05)/1000
+```
+The power is the proportion of times that the test correctly rejects the null hypothesis in repeated sampling so that we prefer to use the statistical test have better power.
+
+For the completely randomization design, I would recommend t-test since t-test have better power than Wilconxon test.
+
+For the randomized paired design, I would also recommend t-test since t-test have better power than Wilconxon test.
